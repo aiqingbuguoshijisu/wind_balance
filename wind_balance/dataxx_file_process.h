@@ -97,14 +97,14 @@ vector<vector<int>> find_zeroRows_index(const string&filePath)
 	return zero_rows;
 }
 
-MatrixXd compute_cofficient_Y(const string& dataxxFilePath,const string& loadxxFilePath)
+vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string& loadxxFilePath)
 {
 	ifstream inFile(dataxxFilePath);
 
 	if (!inFile.is_open())
 	{
 		cerr << "Unable to open file for reading: " << dataxxFilePath << endl;
-		return MatrixXd();
+		return vector<MatrixXd>();
 	}
 
 	vector<string> lines;
@@ -119,7 +119,7 @@ MatrixXd compute_cofficient_Y(const string& dataxxFilePath,const string& loadxxF
 	if (lines.empty())
 	{
 		cerr << "File is empty or failed to read lines: " << dataxxFilePath << endl;
-		return MatrixXd();
+		return vector<MatrixXd>();
 	}
 
 	lines.erase(lines.begin());//删除lines数组的第一行内容
@@ -171,37 +171,59 @@ MatrixXd compute_cofficient_Y(const string& dataxxFilePath,const string& loadxxF
 
 	MatrixXd u = dataxxx.block(0, 0, rowCount, 6);
 
-	MatrixXd compute_u_0 = u.col(1) - u.col(0);
+	vector<MatrixXd> compute_u_0_list;
+	compute_u_0_list.push_back(u.col(1) - u.col(0));
+	compute_u_0_list.push_back(u.col(1) + u.col(0));
+	compute_u_0_list.push_back(u.col(2));
+	compute_u_0_list.push_back(u.col(3));
+	compute_u_0_list.push_back(u.col(4) - u.col(5));
+	compute_u_0_list.push_back(u.col(4) + u.col(5));
 
-	MatrixXd u_0 = MatrixXd::Zero(rowCount, 1);
+	vector<MatrixXd> delta_u_0_list;
 
 	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);
 
-	vector<double> zero_rows_u_0(zero_rows.size(),0.0);
-	for (int i = 0; i < zero_rows.size(); i++)
+	vector<vector<double>> zero_rows_u_0(6, vector<double>(zero_rows.size(), 0.0));
+	for (int i = 0; i < zero_rows_u_0.size(); i++)
 	{
-		double sum = 0;
-		for (int j : zero_rows[i])
+		for (int j = 0; j < zero_rows.size(); j++)
 		{
-			sum += compute_u_0(j,0);
+			double sum = 0;
+			for (int k : zero_rows[j])
+			{
+				sum += compute_u_0_list[i](k, 0);
+			}
+			zero_rows_u_0[i][j] = sum / zero_rows[j].size();
 		}
-		zero_rows_u_0[i] = sum / zero_rows[i].size();
 	}
-
-	for (int k = 0; k < 72; k += 12) 
+	int zero_rows_u_0_index = 0;
+	for (const auto& j : compute_u_0_list)
 	{
-		int i = k / 12;
-		u_0.block(12 * i, 0, 12, 1) = compute_u_0.block(12 * i, 0, 12, 1).array() - zero_rows_u_0[i];
+		MatrixXd delta_u_0(rowCount, 1);
+		for (int k = 0; k < 72; k += 12)
+		{
+			int i = k / 12;
+			delta_u_0.block(k, 0, 12, 1) = j.block(k, 0, 12, 1).array() - zero_rows_u_0[zero_rows_u_0_index][i];
+		}
+		for (int k = 72; k < 144; k += 18)
+		{
+			int i = (k - 72) / 18;
+			delta_u_0.block(k, 0, 18, 1) = j.block(k, 0, 18, 1).array() - zero_rows_u_0[zero_rows_u_0_index][i + 6];
+		}
+		delta_u_0_list.push_back(delta_u_0);
+		zero_rows_u_0_index++;
 	}
 
-	for (int k = 72; k < 144; k += 18) 
+	vector<MatrixXd>py_one_infer;
+
+	for (int i = 0; i < f_list.size(); i++)
 	{
-		int i = (k - 72) / 18;
-		u_0.block(72 + 18 * i, 0, 18, 1) = compute_u_0.block(72 + 18 * i, 0, 18, 1).array() - zero_rows_u_0[i + 6];
+		MatrixXd a = f;
+		a.col(i) = delta_u_0_list[i];
+		py_one_infer.push_back(a);
 	}
 
-	MatrixXd py_one_infer(rowCount, 5);
-	py_one_infer << f.col(1), f.col(2), f.col(3), f.col(4), f.col(5);
+
 
 	MatrixXd py_two_infer(rowCount, 21);
 	for (int i = 0; i < 6; i++)
@@ -218,10 +240,34 @@ MatrixXd compute_cofficient_Y(const string& dataxxFilePath,const string& loadxxF
 		}
 	}
 
-	MatrixXd A(144, 27);
-	A<<u_0, py_one_infer, py_two_infer;
+	vector<MatrixXd> A;
+	for (int i = 0; i < 6; i++)
+	{
+		MatrixXd a(rowCount, py_one_infer[i].cols() + py_two_infer.cols());
+		a<<py_one_infer[i],py_two_infer;
+		A.push_back(a);
+	}
 
-	MatrixXd X = (A.transpose() * A).inverse() * A.transpose() * f.col(0);
-
+	vector<MatrixXd> X;
+	for (int i = 0; i < 6; i++)
+	{
+		MatrixXd a = (A[i].transpose() * A[i]).inverse() * A[i].transpose() * f_list[i];
+		X.push_back(a);
+	}
 	return X;
 }
+
+void print_to_27_6(const vector<MatrixXd>& mtx)
+{
+	int rowCount = mtx[0].rows();//27
+	int colCount = mtx[0].cols();//1
+	MatrixXd copy_mtx(rowCount, colCount*mtx.size());
+	int colIdx = 0;
+	for (const auto& mat : mtx)
+	{
+		copy_mtx.block(0, colIdx, rowCount, colCount) = mat;
+		colIdx++;
+	}
+	cout << copy_mtx;
+}
+		
