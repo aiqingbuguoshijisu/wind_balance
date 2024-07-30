@@ -163,15 +163,15 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 	}
 
 	vector<MatrixXd> f_list;
-	MatrixXd f = dataxxx.block(0, 6, rowCount, 6) * 9.8035;
-	for (int i = 0; i < 6; i++)
+	MatrixXd f = dataxxx.block(0, 6, rowCount, 6) * 9.8035;//载荷kg->N
+	for (int i = 0; i < 6; i++)//分离出载荷的6个分量
 	{
 		f_list.push_back(f.col(i));
 	}
 
-	MatrixXd u = dataxxx.block(0, 0, rowCount, 6);
+	MatrixXd u = dataxxx.block(0, 0, rowCount, 6);//分离出电压的6个分量
 
-	vector<MatrixXd> compute_u_0_list;
+	vector<MatrixXd> compute_u_0_list;//计算u_0的中间变量，即先组桥
 	compute_u_0_list.push_back(u.col(1) - u.col(0));
 	compute_u_0_list.push_back(u.col(1) + u.col(0));
 	compute_u_0_list.push_back(u.col(2));
@@ -181,9 +181,9 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 
 	vector<MatrixXd> delta_u_0_list;
 
-	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);
+	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);//存放10组载荷为0的行号*6
 
-	vector<vector<double>> zero_rows_u_0(6, vector<double>(zero_rows.size(), 0.0));
+	vector<vector<double>> zero_rows_u_0(6, vector<double>(zero_rows.size(), 0.0));//存放10组载荷为0的行的电压平均值*6
 	for (int i = 0; i < zero_rows_u_0.size(); i++)
 	{
 		for (int j = 0; j < zero_rows.size(); j++)
@@ -214,7 +214,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		zero_rows_u_0_index++;
 	}
 
-	vector<MatrixXd>py_one_infer;
+	vector<MatrixXd>py_one_infer;//一阶干扰项
 
 	for (int i = 0; i < f_list.size(); i++)
 	{
@@ -225,7 +225,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 
 
 
-	MatrixXd py_two_infer(rowCount, 21);
+	MatrixXd py_two_infer(rowCount, 21);//二阶干扰项及交叉项
 	for (int i = 0; i < 6; i++)
 	{
 		py_two_infer.col(i) = f.col(i).array().square();
@@ -240,7 +240,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		}
 	}
 
-	vector<MatrixXd> A;
+	vector<MatrixXd> A;//自变量矩阵
 	for (int i = 0; i < 6; i++)
 	{
 		MatrixXd a(rowCount, py_one_infer[i].cols() + py_two_infer.cols());
@@ -248,7 +248,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		A.push_back(a);
 	}
 
-	vector<MatrixXd> X;
+	vector<MatrixXd> X;//系数矩阵
 	for (int i = 0; i < 6; i++)
 	{
 		MatrixXd a = (A[i].transpose() * A[i]).inverse() * A[i].transpose() * f_list[i];
@@ -257,7 +257,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 	return X;
 }
 
-void print_to_27_6(const vector<MatrixXd>& mtx)
+void print_to_27_6(const vector<MatrixXd>& mtx)//输出到27*6的矩阵
 {
 	int rowCount = mtx[0].rows();//27
 	int colCount = mtx[0].cols();//1
@@ -269,5 +269,4 @@ void print_to_27_6(const vector<MatrixXd>& mtx)
 		colIdx++;
 	}
 	cout << copy_mtx;
-}
-		
+}	
