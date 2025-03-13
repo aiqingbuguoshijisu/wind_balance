@@ -178,7 +178,12 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		}
 	}
 
-
+	vector<MatrixXd> f_list;
+	MatrixXd f = dataxxx.block(0, 6, rowCount, 6) * 9.8035;//载荷kg->N
+	for (int i = 0; i < 6; i++)//分离出载荷的6个分量
+	{
+		f_list.push_back(f.col(i));
+	}
 
 	MatrixXd u = dataxxx.block(0, 0, rowCount, 6);//分离出电压的6个分量
 
@@ -192,9 +197,9 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 
 	vector<MatrixXd> delta_u_0_list;
 
-	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);//存放16组载荷为0的行号
+	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);//存放10组载荷为0的行号*6
 
-	vector<vector<double>> zero_rows_u_0(6, vector<double>(zero_rows.size(), 0.0));//存放16组载荷为0的行的电压平均值*6
+	vector<vector<double>> zero_rows_u_0(6, vector<double>(zero_rows.size(), 0.0));//存放10组载荷为0的行的电压平均值*6
 	for (int i = 0; i < zero_rows_u_0.size(); i++)
 	{
 		for (int j = 0; j < zero_rows.size(); j++)
@@ -281,6 +286,8 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		a.col(i) = delta_u_0_list[i];
 		py_one_infer.push_back(a);
 	}
+
+
 
 	MatrixXd py_two_infer(rowCount, 21);//二阶干扰项及交叉项
 	for (int i = 0; i < 6; i++)
