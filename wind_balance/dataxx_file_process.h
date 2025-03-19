@@ -178,13 +178,6 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		}
 	}
 
-	vector<MatrixXd> f_list;
-	MatrixXd f = dataxxx.block(0, 6, rowCount, 6) * 9.8035;//载荷kg->N
-	for (int i = 0; i < 6; i++)//分离出载荷的6个分量
-	{
-		f_list.push_back(f.col(i));
-	}
-
 	MatrixXd u = dataxxx.block(0, 0, rowCount, 6);//分离出电压的6个分量
 
 	vector<MatrixXd> compute_u_0_list;//计算u_0的中间变量，即先组桥
@@ -245,38 +238,38 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		f_list.push_back(f.col(i));
 	}
 
-	vector<MatrixXd> delta_f_list;//修正后的
-	vector<vector<double>> zero_rows_f(6, vector<double>(zero_rows.size(), 0.0));
-	for (int i = 0; i < zero_rows_f.size(); i++)
-	{
-		for (int j = 0; j < zero_rows.size(); j++)
-		{
-			double sum = 0;
-			for (int k : zero_rows[j])
-			{
-				sum += f_list[i](k, 0);
-			}
-			zero_rows_f[i][j] = sum / zero_rows[j].size();
-		}
-	}
+	//vector<MatrixXd> delta_f_list;//修正后的
+	//vector<vector<double>> zero_rows_f(6, vector<double>(zero_rows.size(), 0.0));
+	//for (int i = 0; i < zero_rows_f.size(); i++)
+	//{
+	//	for (int j = 0; j < zero_rows.size(); j++)
+	//	{
+	//		double sum = 0;
+	//		for (int k : zero_rows[j])
+	//		{
+	//			sum += f_list[i](k, 0);
+	//		}
+	//		zero_rows_f[i][j] = sum / zero_rows[j].size();
+	//	}
+	//}
 
-	int zero_rows_f_index = 0;
-	for (const auto& j : f_list)
-	{
-		MatrixXd delta_f(rowCount, 1);
-		for (int k = 0; k < zero_rows.size(); k++)
-		{
-			int block = zero_rows[k][1] - zero_rows[k][0]+1;
-			delta_f.block(zero_rows[k][0], 0, block, 1) = j.block(zero_rows[k][0], 0, block, 1).array() - zero_rows_f[zero_rows_f_index][k];
-		}
-		delta_f_list.push_back(delta_f);
-		zero_rows_f_index++;
-	}
+	//int zero_rows_f_index = 0;
+	//for (const auto& j : f_list)
+	//{
+	//	MatrixXd delta_f(rowCount, 1);
+	//	for (int k = 0; k < zero_rows.size(); k++)
+	//	{
+	//		int block = zero_rows[k][1] - zero_rows[k][0]+1;
+	//		delta_f.block(zero_rows[k][0], 0, block, 1) = j.block(zero_rows[k][0], 0, block, 1).array() - zero_rows_f[zero_rows_f_index][k];
+	//	}
+	//	delta_f_list.push_back(delta_f);
+	//	zero_rows_f_index++;
+	//}
 
-	for (int i = 0;i< delta_f_list.size();i++)
-	{
-		f.col(i) = delta_f_list[i];
-	}
+	//for (int i = 0;i< delta_f_list.size();i++)
+	//{
+	//	f.col(i) = delta_f_list[i];
+	//}
 
 	vector<MatrixXd>py_one_infer;//一阶干扰项
 
