@@ -188,7 +188,7 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 	compute_u_0_list.push_back(u.col(4) - u.col(5));
 	compute_u_0_list.push_back(u.col(4) + u.col(5));
 
-	vector<MatrixXd> delta_u_0_list;
+	vector<MatrixXd> delta_u_0_list;//最终组桥修正后电压
 
 	vector<vector<int>> zero_rows = find_zeroRows_index(loadxxFilePath);//存放10组载荷为0的行号*6
 
@@ -231,12 +231,32 @@ vector<MatrixXd> compute_cofficient_Y(const string& dataxxFilePath,const string&
 		//zero_rows_u_0_index++;
 	}
 
-	vector<MatrixXd> f_list;
+
 	MatrixXd f = dataxxx.block(0, 6, rowCount, 6) * 9.8035;//载荷kg->N
+	/*这里把载荷和电压的零行全部删除*/
+	for (const auto& zero_row : zero_rows)
+	{
+		for (const auto& index : zero_row)
+		{
+			f.row(index) = MatrixXd::Zero(1, 6);
+			for (auto& mat : delta_u_0_list)
+			{
+				mat.row(index) = MatrixXd::Zero(1, 1);
+			}
+		}
+	}
+	//cout<<"f:\n"<<f.size()<<"\n" << f/9.8035 << endl;
+	//cout << "delta_u_0_list:\n";
+	//cout<<"delta_u_0_list.size():"<<delta_u_0_list[0].size() << "\n";
+	//cout<<delta_u_0_list[0] << "\n";
+
+	vector<MatrixXd> f_list;//最终载荷值
 	for (int i = 0; i < 6; i++)//分离出载荷的6个分量
 	{
 		f_list.push_back(f.col(i));
 	}
+
+
 
 	//vector<MatrixXd> delta_f_list;//修正后的
 	//vector<vector<double>> zero_rows_f(6, vector<double>(zero_rows.size(), 0.0));
